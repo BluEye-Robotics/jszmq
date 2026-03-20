@@ -1,5 +1,5 @@
 {
-  "name": "jszmq",
+  "name": "@blueyerobotics/jszmq",
   "version": "0.1.3",
   "description": "Port of zeromq to Javascript over Web Socket transport",
   "main": "lib/index.js",
@@ -31,7 +31,6 @@
   "dependencies": {
     "@types/events": "^3.0.0",
     "@types/lodash": "^4.14.158",
-    "@types/node": "^14.0.26",
     "@types/setasap": "^2.0.0",
     "@types/ws": "^7.2.6",
     "assert": "^2.0.0",
@@ -44,11 +43,12 @@
   },
   "devDependencies": {
     "@types/jasmine": "^3.5.11",
+    "@types/node": "^14.0.26",
     "coveralls": "^3.1.0",
     "jasmine": "^3.6.1",
     "jasmine-console-reporter": "^3.1.0",
     "nyc": "^15.1.0",
     "ts-node": "^8.10.2",
-    "typescript": "^3.9.7"
+    "typescript": "^5.9.3"
   }
 }
