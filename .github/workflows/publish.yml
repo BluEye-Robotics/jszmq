@@ -10,15 +10,27 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-
-      - uses: actions/setup-node@v6
+      - name: Checkout code
+        uses: actions/checkout@v4
         with:
-          node-version: "24"
-          registry-url: "https://registry.npmjs.org"
-      - run: npm ci
-      - run: npm run build --if-present
-      - run: npm test
+          lfs: true
+
+      - uses: pnpm/action-setup@v4
+        name: Install pnpm
+        with:
+          version: 10
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+          cache-dependency-path: pnpm-lock.yaml
+
+      - run: pnpm install
+      - run: pnpm build
+      - run: pnpm test
 
       - if: startsWith(github.ref, 'refs/tags/v')
-        run: npm publish
+        run: pnpm publish
