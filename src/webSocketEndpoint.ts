@@ -42,6 +42,7 @@ export default class WebSocketEndpoint extends EventEmitter implements IEndpoint
             this.accepted = true
             this.state = State.Active
             this.socket.binaryType = "arraybuffer"
+            this.socket.onerror = this.error.bind(this)
             this.socket.onclose = this.onClose.bind(this)
             this.socket.onmessage = this.onMessage.bind(this)
             this.send([this.options.routingId])
@@ -56,6 +57,7 @@ export default class WebSocketEndpoint extends EventEmitter implements IEndpoint
         this.socket = new WebSocket(this.address, ['ZWS2.0'])
         this.socket.binaryType = "arraybuffer"
         this.socket.onopen = this.onOpen.bind(this)
+        this.socket.onerror = this.error.bind(this)
         this.socket.onclose = this.onClose.bind(this)
         this.socket.onmessage = this.onMessage.bind(this)
     }
@@ -68,10 +70,10 @@ export default class WebSocketEndpoint extends EventEmitter implements IEndpoint
         this.queue.forEach(frame => this.socket.send(frame))
         this.queue = []
 
-        if (this.options.immediate)
-            this.emit('attach', this)
-        else if (oldState === State.Reconnecting)
+        if (oldState === State.Reconnecting)
             this.emit('hiccuped', this)
+        else
+            this.emit('attach', this)
     }
 
     onClose() {
@@ -80,8 +82,8 @@ export default class WebSocketEndpoint extends EventEmitter implements IEndpoint
             this.emit('terminated', this)
         }
         else if (this.state !== State.Closed) {
-            if ((this.state === State.Active || this.state === State.Connecting) && this.options.immediate)
-                this.emit('terminated', this)
+            if (this.state === State.Active || this.state === State.Connecting)
+                this.emit('lost', this)
 
             if (this.state === State.Active)
                 this.state = State.Reconnecting

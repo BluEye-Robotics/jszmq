@@ -11,6 +11,10 @@ class SocketBase extends EventEmitter {
     private endpoints: IEndpoint[] = []
     private binds: IListener[] = []
     public readonly options = new SocketOptions()
+    private readonly endpointAttached: (endpoint: IEndpoint) => void
+    private readonly endpointLost: (endpoint: IEndpoint) => void
+    private readonly endpointTerminatedInternal: (endpoint: IEndpoint) => void
+    private readonly endpointRecovered: (endpoint: IEndpoint) => void
 
     constructor() {
         super()
@@ -20,19 +24,32 @@ class SocketBase extends EventEmitter {
         this.endpointTerminated = this.endpointTerminated.bind(this)
         this.xrecv = this.xrecv.bind(this)
         this.hiccuped = this.hiccuped.bind(this)
+        this.endpointAttached = (endpoint: IEndpoint) => {
+            this.attachEndpoint(endpoint)
+            this.emit('ready', endpoint)
+        }
+        this.endpointLost = (endpoint: IEndpoint) => {
+            this.emit('lost', endpoint)
+        }
+        this.endpointTerminatedInternal = (endpoint: IEndpoint) => {
+            this.endpointTerminated(endpoint)
+            this.emit('lost', endpoint)
+        }
+        this.endpointRecovered = (endpoint: IEndpoint) => {
+            this.hiccuped(endpoint)
+            this.emit('ready', endpoint)
+        }
     }
 
     connect(address: string) {
         if (address.startsWith("ws://") || address.startsWith("wss://")) {
             const endpoint = new WebSocketEndpoint(address, this.options)
-            endpoint.on('attach', this.attachEndpoint)
-            endpoint.on('terminated', this.endpointTerminated)
+            endpoint.on('attach', this.endpointAttached)
+            endpoint.on('lost', this.endpointLost)
+            endpoint.on('terminated', this.endpointTerminatedInternal)
             endpoint.on('message', this.xrecv)
-            endpoint.on('hiccuped', this.hiccuped)
+            endpoint.on('hiccuped', this.endpointRecovered)
             this.endpoints.push(endpoint)
-
-            if (!this.options.immediate)
-                this.attachEndpoint(endpoint)
         } else {
             throw new Error('unsupported transport')
         }
@@ -42,13 +59,15 @@ class SocketBase extends EventEmitter {
         const endpoint = find(this.endpoints, e => e.address === address)
 
         if (endpoint) {
-            endpoint.removeListener('attach', this.attachEndpoint)
-            endpoint.removeListener('terminated', this.endpointTerminated)
+            endpoint.removeListener('attach', this.endpointAttached)
+            endpoint.removeListener('lost', this.endpointLost)
+            endpoint.removeListener('terminated', this.endpointTerminatedInternal)
             endpoint.removeListener('message', this.xrecv)
-            endpoint.removeListener('hiccuped', this.hiccuped)
+            endpoint.removeListener('hiccuped', this.endpointRecovered)
             endpoint.close()
             pull(this.endpoints, endpoint)
             this.endpointTerminated(endpoint)
+            this.emit('lost', endpoint)
         }
     }
 
@@ -85,13 +104,15 @@ class SocketBase extends EventEmitter {
         this.binds = []
 
         this.endpoints.forEach(endpoint => {
-            endpoint.removeListener('attach', this.attachEndpoint)
-            endpoint.removeListener('terminated', this.endpointTerminated)
+            endpoint.removeListener('attach', this.endpointAttached)
+            endpoint.removeListener('lost', this.endpointLost)
+            endpoint.removeListener('terminated', this.endpointTerminatedInternal)
             endpoint.removeListener('message', this.xrecv)
-            endpoint.removeListener('hiccuped', this.hiccuped)
+            endpoint.removeListener('hiccuped', this.endpointRecovered)
             endpoint.close()
             pull(this.endpoints, endpoint)
             this.endpointTerminated(endpoint)
+            this.emit('lost', endpoint)
         })
     }
 
@@ -108,6 +129,7 @@ class SocketBase extends EventEmitter {
         endpoint.on('message', this.xrecv)
 
         this.attachEndpoint(endpoint)
+        this.emit('ready', endpoint)
     }
 
     private bindEndpointTerminated(endpoint: IEndpoint) {
@@ -115,6 +137,7 @@ class SocketBase extends EventEmitter {
         endpoint.removeListener('message', this.xrecv)
 
         this.endpointTerminated(endpoint)
+        this.emit('lost', endpoint)
     }
 
     protected attachEndpoint(endpoint: IEndpoint) {
