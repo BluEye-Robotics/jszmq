@@ -1,9 +1,10 @@
+import { describe, it, expect } from 'vitest'
 import * as jsmq from '../src'
 
 const decode = (b: Uint8Array) => new TextDecoder().decode(b)
 
-describe('pubsub', function() {
-    it('subscribe', function(done) {
+describe('pubsub', () => {
+    it('subscribe', () => new Promise<void>(resolve => {
         const pub = new jsmq.XPub()
         const sub = new jsmq.Sub()
 
@@ -20,12 +21,12 @@ describe('pubsub', function() {
                 expect(decode(topic)).toBe('AAA')
                 pub.close()
                 sub.close()
-                done()
+                resolve()
             })
         })
-    })
+    }))
 
-    it('unsubscribe', function (done) {
+    it('unsubscribe', () => new Promise<void>(resolve => {
         const pub = new jsmq.XPub()
         const sub = new jsmq.Sub()
 
@@ -46,9 +47,9 @@ describe('pubsub', function() {
                     expect(decode(topic2)).toBe('B')
                     pub.close()
                     sub.close()
-                    done()
+                    resolve()
                 })
             })
         })
-    })
+    }))
 })

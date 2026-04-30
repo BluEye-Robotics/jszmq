@@ -1,7 +1,5 @@
-import { EventEmitter } from 'events'
-import * as WebSocket from 'isomorphic-ws'
+import EventEmitter from './utils/eventEmitter'
 import SocketOptions from './socketOptions'
-import {isString} from 'lodash'
 import {IEndpoint, Msg} from './types'
 import {concatBytes, encodeUtf8} from './utils/bytes'
 
@@ -16,7 +14,7 @@ export default class WebSocketEndpoint extends EventEmitter implements IEndpoint
     socket!: WebSocket;
     state: State
     frames:Uint8Array[] = []
-    queue:Uint8Array[] = []
+    queue:Uint8Array<ArrayBuffer>[] = []
     options:SocketOptions
     routingIdReceived = false
     accepted:boolean
@@ -29,7 +27,7 @@ export default class WebSocketEndpoint extends EventEmitter implements IEndpoint
         this.options = options
         this.connect = this.connect.bind(this)
 
-        if (isString(address)) {
+        if (typeof address === 'string') {
             this.address = address
             this.state = State.Connecting
             this.accepted = false
@@ -96,7 +94,7 @@ export default class WebSocketEndpoint extends EventEmitter implements IEndpoint
         this.socket.close()
     }
 
-    onMessage(message:ArrayBuffer|any) {
+    onMessage(message:MessageEvent) {
         if (!this.routingIdReceived) {
             this.routingIdReceived = true
 
@@ -146,7 +144,7 @@ export default class WebSocketEndpoint extends EventEmitter implements IEndpoint
 
             let frame = msg[i]
 
-            if (isString(frame))
+            if (typeof frame === 'string')
                 frame = encodeUtf8(frame)
             else if (frame instanceof Uint8Array) {
                 // Nothing to do, use as is

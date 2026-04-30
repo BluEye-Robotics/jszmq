@@ -1,3 +1,8 @@
+export function remove<T>(arr:T[], item:T) {
+    const i = arr.indexOf(item)
+    if (i !== -1) arr.splice(i, 1)
+}
+
 export function copy<T>(src:Array<T>, srcOffset:number, dest:Array<T>, destOffset:number, length:number) {
     for (let i = 0; i < length; i++)
         dest[i + destOffset] = src[i + srcOffset]

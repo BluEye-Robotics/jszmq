@@ -1,10 +1,10 @@
-import 'jasmine'
+import { describe, it, expect } from 'vitest'
 import * as jsmq from '../src'
 
 const decode = (b: Uint8Array) => new TextDecoder().decode(b)
 
-describe('dealer-router', function () {
-    it('ping-pong', function (done) {
+describe('dealer-router', () => {
+    it('ping-pong', () => new Promise<void>(resolve => {
         const router = new jsmq.Router()
         const dealer = new jsmq.Dealer()
         router.bind('ws://localhost:3002/dealer-router')
@@ -16,8 +16,10 @@ describe('dealer-router', function () {
             router.send([routingId, 'world'])
             dealer.once('message', reply => {
                 expect(decode(reply)).toBe('world')
-                done()
+                router.close()
+                dealer.close()
+                resolve()
             })
         })
-    })
+    }))
 })

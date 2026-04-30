@@ -1,6 +1,6 @@
-import { EventEmitter } from 'events'
+import EventEmitter from './utils/eventEmitter'
 import SocketOptions from './socketOptions'
-import {find, pull} from 'lodash'
+import {remove} from './utils/array'
 import {Frame, IEndpoint, IListener, Msg} from './types'
 import WebSocketListener from './webSocketListener'
 import * as http from 'http'
@@ -56,7 +56,7 @@ class SocketBase extends EventEmitter {
     }
 
     disconnect(address: string) {
-        const endpoint = find(this.endpoints, e => e.address === address)
+        const endpoint = this.endpoints.find(e => e.address === address)
 
         if (endpoint) {
             endpoint.removeListener('attach', this.endpointAttached)
@@ -65,7 +65,7 @@ class SocketBase extends EventEmitter {
             endpoint.removeListener('message', this.xrecv)
             endpoint.removeListener('hiccuped', this.endpointRecovered)
             endpoint.close()
-            pull(this.endpoints, endpoint)
+            remove(this.endpoints, endpoint)
             this.endpointTerminated(endpoint)
             this.emit('lost', endpoint)
         }
@@ -86,12 +86,12 @@ class SocketBase extends EventEmitter {
     }
 
     unbind(address: string) {
-        const listener = find(this.binds, b => b.address === address)
+        const listener = this.binds.find(b => b.address === address)
 
         if (listener) {
             listener.removeListener('attach', this.attachEndpoint)
             listener.close()
-            pull(this.binds, listener)
+            remove(this.binds, listener)
         }
     }
 
@@ -110,7 +110,7 @@ class SocketBase extends EventEmitter {
             endpoint.removeListener('message', this.xrecv)
             endpoint.removeListener('hiccuped', this.endpointRecovered)
             endpoint.close()
-            pull(this.endpoints, endpoint)
+            remove(this.endpoints, endpoint)
             this.endpointTerminated(endpoint)
             this.emit('lost', endpoint)
         })

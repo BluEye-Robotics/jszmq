@@ -1,4 +1,3 @@
-import * as assert from 'assert'
 import {resize} from './array'
 
 type ForeachCallback = (buffer:Uint8Array) => void
@@ -91,10 +90,10 @@ export default class Trie {
                 this.next = []
                 this.count = 0
                 this.liveNodes--
-                assert(this.liveNodes == 0)
+                if (this.liveNodes != 0) throw new Error('assertion failed')
             } else {
                 this.next[currentCharacter - this.minCharacter] = null
-                assert(this.liveNodes > 1)
+                if (this.liveNodes <= 1) throw new Error('assertion failed')
                 this.liveNodes--
 
                 if (currentCharacter == this.minCharacter) {
@@ -107,9 +106,9 @@ export default class Trie {
                             break
                         }
                     }
-                    assert(newMin != this.minCharacter)
-                    assert(newMin > this.minCharacter)
-                    assert(this.count > newMin - this.minCharacter)
+                    if (newMin == this.minCharacter) throw new Error('assertion failed')
+                    if (newMin <= this.minCharacter) throw new Error('assertion failed')
+                    if (this.count <= newMin - this.minCharacter) throw new Error('assertion failed')
 
                     this.count = this.count - (newMin - this.minCharacter)
                     this.next = resize(this.next, this.count, false);
@@ -124,7 +123,7 @@ export default class Trie {
                             break
                         }
                     }
-                    assert(newCount != this.count)
+                    if (newCount == this.count) throw new Error('assertion failed')
                     this.count = newCount
 
                     this.next = resize(this.next, this.count, true)

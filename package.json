@@ -2,21 +2,28 @@
   "name": "@blueyerobotics/jszmq",
   "version": "0.3.0",
   "description": "Port of zeromq to Javascript over Web Socket transport",
-  "main": "lib/index.js",
-  "types": "lib/index.d.ts",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./lib/index.js",
+    "./package.json": "./package.json"
+  },
+  "types": "./lib/index.d.ts",
   "files": [
     "lib"
   ],
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "prepare": "tsc",
     "build": "tsc -p tsconfig.json",
     "check": "tsc -p tsconfig.json --noEmit",
-    "clear": "rm -rf lib/ dist/ coverage/ .nyc_output/",
+    "clear": "rm -rf lib/ coverage/",
     "clear:all": "rm -rf node_modules/ npm-debug.log && npm run clear",
-    "build:test": "npm run clear && tsc -p tsconfig-test.json",
-    "test": "npm run build:test && jasmine --reporter=jasmine-console-reporter --config=jasmine.json",
-    "coverage": "nyc npm run test && nyc report --reporter=html",
-    "coveralls": "nyc npm run test && nyc report --reporter=text-lcov | coveralls -v"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage"
   },
   "repository": {
     "type": "git",
@@ -29,25 +36,13 @@
   },
   "homepage": "https://github.com/BluEye-Robotics/jszmq#readme",
   "dependencies": {
-    "@types/events": "^3.0.0",
-    "@types/lodash": "^4.14.158",
-    "@types/setasap": "^2.0.0",
-    "@types/ws": "^7.2.6",
-    "assert": "^2.0.0",
-    "events": "^3.2.0",
-    "isomorphic-ws": "^4.0.1",
-    "lodash": "^4.17.19",
-    "setasap": "^2.0.1",
-    "ws": "^7.3.1"
+    "ws": "^8.18.0"
   },
   "devDependencies": {
-    "@types/jasmine": "^3.5.11",
-    "@types/node": "^14.0.26",
-    "coveralls": "^3.1.0",
-    "jasmine": "^3.6.1",
-    "jasmine-console-reporter": "^3.1.0",
-    "nyc": "^15.1.0",
-    "ts-node": "^8.10.2",
-    "typescript": "^5.9.3"
+    "@types/node": "^22",
+    "@types/ws": "^8.5.10",
+    "@vitest/coverage-v8": "^3",
+    "typescript": "^6",
+    "vitest": "^3"
   }
 }
