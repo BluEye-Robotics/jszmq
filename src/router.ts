@@ -1,5 +1,5 @@
 import SocketBase from './socketBase'
-import {includes, pull} from 'lodash'
+import {remove} from './utils/array'
 import {IEndpoint, Msg} from './types'
 import {bytesToHex, concatBytes} from './utils/bytes'
 
@@ -21,13 +21,13 @@ export default class Router extends SocketBase {
 
     protected endpointTerminated(endpoint: IEndpoint) {
         this.pipes.delete(endpoint.routingKeyString)
-        pull(this.anonymousPipes, endpoint)
+        remove(this.anonymousPipes, endpoint)
     }
 
     protected xrecv(endpoint: IEndpoint, ...msg: Uint8Array[]) {
         // For anonymous pipe, the first message is the identity
-        if (includes(this.anonymousPipes, endpoint)) {
-            pull(this.anonymousPipes, endpoint)
+        if (this.anonymousPipes.includes(endpoint)) {
+            remove(this.anonymousPipes, endpoint)
 
             let routingKey = msg[0]
             if (routingKey.length > 0)

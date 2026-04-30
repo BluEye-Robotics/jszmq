@@ -1,30 +1,33 @@
 jszmq
 ======
 
-jszmq is port of zeromq to Javascript, supporting both browsers and NodeJS.
-The library only support the WebSocket transport ([ZWS 2.0](https://rfc.zeromq.org/spec:45/ZWS/)).
+jszmq is a port of zeromq to JavaScript, focused on **browser** runtimes via the WebSocket transport ([ZWS 2.0](https://rfc.zeromq.org/spec:45/ZWS/)).
 
-The API of the library is similar to that of [zeromq.js](https://github.com/zeromq/zeromq.js).
+The API mirrors [zeromq.js](https://github.com/zeromq/zeromq.js).
+
+## Requirements
+
+- Browser-first: consumed through a bundler (Vite, webpack, esbuild, tsx, etc.). The package ships ESM only with extensionless internal imports.
+- Node ≥22 if used server-side (relies on the global `WebSocket`).
 
 ## Compatibility with ZeroMQ
 
-WebSocket transport added to [zeromq](https://github.com/zeromq/libzmq) recently, and it is only available when compiling from source.
+The WebSocket transport is supported by [zeromq](https://github.com/zeromq/libzmq) when compiled from source.
 
-Other ports of zeromq, like NetMQ (C#) and JeroMQ (Java) don't yet support the WebSocket transport.
+Other ports of zeromq (NetMQ for C#, JeroMQ for Java) don't yet support the WebSocket transport.
 
 ## Compatibility with ZWS 1.0, zwssock, JSMQ and NetMQ.WebSockets
 
-The library is currently not compatible with ZWS 1.0 and the implementation of it. 
+Not compatible with ZWS 1.0.
 
 ## Installation
 
 ```
-npm install --save jszmq
+pnpm add @blueyerobotics/jszmq
 ```
 
 ## Supported socket types
 
-Following socket types are currently supported:
 * Pub
 * Sub
 * XPub
@@ -35,159 +38,145 @@ Following socket types are currently supported:
 * Rep
 * Push
 * Pull
+* Pair
 
 ## How to use
 
-Import jszmq with one of the following:
-
 ```js
-import * as zmq from 'jszmq';
-```
-
-```js
-const zmq = require('jszmq');
+import * as zmq from '@blueyerobotics/jszmq'
 ```
 
 ### Creating a socket
 
-To create a socket you can either use the `socket` function, which is compatible with zeromq.js or use the socket type class.
-
-Socket type class:
+Either via the socket type class:
 
 ```js
-const dealer = new zmq.Dealer();
+const dealer = new zmq.Dealer()
 ```
 
-with socket function:
+or via the `socket` factory (matches zeromq.js):
+
 ```js
-const dealer = zmq.socket('dealer');
+const dealer = zmq.socket('dealer')
 ```
 
 ### Bind
 
-To bind call the `bind` function:
+`bind` is **Node-only** (it starts a WebSocket server). Browsers can only `connect`.
 
 ```js
-const zmq = require('jszmq');
+import { Router } from '@blueyerobotics/jszmq'
 
-const router = new zmq.Router();
-router.bind('ws://localhost:80');
+const router = new Router()
+router.bind('ws://localhost:80')
 ```
 
-You can also provide an http server and bind multiple sockets on the same port:
+You can also share an existing HTTP server across multiple sockets:
 
 ```js
-const http = require('http');
-const zmq = require('jszmq');
+import { createServer } from 'http'
+import { Rep, Pub } from '@blueyerobotics/jszmq'
 
-const server = http.createServer();
+const server = createServer()
 
-const rep = new zmq.Rep();
-const pub = new zmq.Pub();
+const rep = new Rep()
+const pub = new Pub()
 
-rep.bind('ws://localhost:80/reqrep', server);
-pub.bind('ws://localhost:80/pubsub', server);
+rep.bind('ws://localhost:80/reqrep', server)
+pub.bind('ws://localhost:80/pubsub', server)
 
-server.listen(80);
+server.listen(80)
 ```
 
-`bindSync` function is an alias for bind in order to be compatible with zeromq.js.
+`bindSync` is an alias for `bind`, kept for zeromq.js compatibility.
 
-### Sending 
+### Sending
 
-To send call the send method and provide with either array or a single frame.
-Frame can either be Buffer of string, in case of string it would be converted to Buffer with utf8 encoding.
+`send` accepts a single frame or an array of frames. Each frame is either a `string` (encoded as UTF-8) or a `Uint8Array`.
 
 ```js
-socket.send('Hello'); // Single frame
-socket.send(['Hello', 'World']); // Multiple frames
-socket.send([Buffer.from('Hello', 'utf8')]); // Using Buffer
+socket.send('Hello')                                      // single frame
+socket.send(['Hello', 'World'])                           // multiple frames
+socket.send([new TextEncoder().encode('Hello')])          // raw bytes
 ```
 
 ### Receiving
 
-Socket emit messages through the on (and once) methods which listen to `message` event.
-Each frame is a parameter to the callback function, all frames are always instances of Buffer.
+Sockets emit a `message` event. Each frame is passed as a separate argument to the listener; every frame is a `Uint8Array`.
 
 ```js
-socket.on('message', msg => console.log(msg.toString())); // One frame
-socket.on('message', (frame1, frame2) => console.log(frame1.toString(), frame2.toString())); // Multiple frames
-socket.on('message', (...frames) => frames.forEach(f => console.log(f.toString()))); // All frames as array
+const decode = (b) => new TextDecoder().decode(b)
+
+socket.on('message', msg => console.log(decode(msg)))                              // one frame
+socket.on('message', (a, b) => console.log(decode(a), decode(b)))                  // two frames
+socket.on('message', (...frames) => frames.forEach(f => console.log(decode(f))))   // any number
 ```
 
 ## Examples
 
 ### Push/Pull
 
-This example demonstrates how a producer pushes information onto a
-socket and how a worker pulls information from the socket.
+A producer pushes work onto a socket and a worker pulls it.
 
 **producer.js**
 
 ```js
-// producer.js
-const zmq = require('jszmq'); // OR import * as zmq form 'jszmq'
-const sock = zmq.socket('push'); // OR const sock = new zmq.Push();
+import { Push } from '@blueyerobotics/jszmq'
 
-sock.bind('tcp://127.0.0.1:3000');
-console.log('Producer bound to port 3000');
+const sock = new Push()
+sock.bind('ws://127.0.0.1:3000')
+console.log('Producer bound to port 3000')
 
-setInterval(function(){
-  console.log('sending work');
-  sock.send('some work');
-}, 500);
+setInterval(() => {
+  console.log('sending work')
+  sock.send('some work')
+}, 500)
 ```
 
 **worker.js**
 
 ```js
-// worker.js
-const zmq = require('jszmq'); // OR import * as zmq form 'jszmq'
-const sock = zmq.socket('pull'); // OR const sock = new zmq.Pull(); 
+import { Pull } from '@blueyerobotics/jszmq'
 
-sock.connect('tcp://127.0.0.1:3000');
-console.log('Worker connected to port 3000');
+const decode = (b) => new TextDecoder().decode(b)
+const sock = new Pull()
+sock.connect('ws://127.0.0.1:3000')
+console.log('Worker connected to port 3000')
 
-sock.on('message', function(msg) {
-  console.log('work: %s', msg.toString());
-});
+sock.on('message', msg => {
+  console.log('work:', decode(msg))
+})
 ```
 
 ### Pub/Sub
 
-This example demonstrates using `jszmq` in a classic Pub/Sub,
-Publisher/Subscriber, application.
-
 **Publisher: pubber.js**
 
 ```js
-// pubber.js
-const zmq = require('jszmq'); // OR import * as zmq form 'jszmq'
-const sock = zmq.socket('pub'); // OR const sock = new zmq.Pub(); 
+import { Pub } from '@blueyerobotics/jszmq'
 
-sock.bind('tcp://127.0.0.1:3000');
-console.log('Publisher bound to port 3000');
+const sock = new Pub()
+sock.bind('ws://127.0.0.1:3000')
+console.log('Publisher bound to port 3000')
 
-setInterval(function() {
-  console.log('sending a multipart message envelope');
-  sock.send(['kitty cats', 'meow!']);
-}, 500);
+setInterval(() => {
+  console.log('sending a multipart message envelope')
+  sock.send(['kitty cats', 'meow!'])
+}, 500)
 ```
 
 **Subscriber: subber.js**
 
 ```js
-// subber.js
-const zmq = require('jszmq'); // OR import * as zmq form 'jszmq'
-const sock = zmq.socket('sub'); // OR const sock = new zmq.Sub();
+import { Sub } from '@blueyerobotics/jszmq'
 
-sock.connect('tcp://127.0.0.1:3000');
-sock.subscribe('kitty cats');
-console.log('Subscriber connected to port 3000');
+const decode = (b) => new TextDecoder().decode(b)
+const sock = new Sub()
+sock.connect('ws://127.0.0.1:3000')
+sock.subscribe('kitty cats')
+console.log('Subscriber connected to port 3000')
 
-sock.on('message', function(topic, message) {
-  console.log('received a message related to:', topic.toString(), 'containing message:', message.toString());
-});
+sock.on('message', (topic, message) => {
+  console.log('topic:', decode(topic), 'message:', decode(message))
+})
 ```
-
-

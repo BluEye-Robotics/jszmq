@@ -1,6 +1,5 @@
 import Router from './router'
 import {IEndpoint, Msg} from './types'
-import setAsap from 'setasap'
 
 type PendingMsg = [IEndpoint, Uint8Array[]]
 
@@ -31,7 +30,7 @@ export default class Rep extends Router {
         // We are ready to handle next message
         const nextMsg = this.pending.shift()
         if (nextMsg)
-            setAsap(() => this.recvInternal(nextMsg[0], nextMsg[1]))
+            queueMicrotask(() => this.recvInternal(nextMsg[0], nextMsg[1]))
         else
             this.sendingReply = false
     }

@@ -1,6 +1,4 @@
-import * as assert from 'assert'
 import {IEndpoint} from '../types'
-import {isUndefined} from 'lodash'
 import {copy, resize} from './array'
 
 type RemovedCallback = (endpoint:IEndpoint, buffer:Uint8Array, bufferSize:number) => void
@@ -21,7 +19,7 @@ export default class MultiTrie {
     }
 
     get isRedundant() : boolean {
-        return isUndefined(this.endpoints) && this.liveNodes === 0
+        return this.endpoints === undefined && this.liveNodes === 0
     }
 
     add(prefix:Uint8Array, start:number, size:number, endpoint:IEndpoint) : boolean {
@@ -31,9 +29,9 @@ export default class MultiTrie {
     private addHelper(prefix:Uint8Array, start:number, size:number, endpoint:IEndpoint) : boolean {
         // We are at the node corresponding to the prefix. We are done.
         if (size === 0) {
-            let result = isUndefined(this.endpoints)
+            let result = this.endpoints === undefined
 
-            if (isUndefined(this.endpoints))
+            if (this.endpoints === undefined)
                 this.endpoints = new Set<IEndpoint>()
 
             this.endpoints.add(endpoint)
@@ -170,7 +168,7 @@ export default class MultiTrie {
             // switch to using the more compact single-node
             // representation
             const node = this.next[newMin - this.minCharacter]
-            assert(node)
+            if (!node) throw new Error('assertion failed')
             this.next = [ node ]
             this.count = 1
             this.minCharacter = newMin
@@ -192,7 +190,7 @@ export default class MultiTrie {
         if (size === 0) {
             if (this.endpoints) {
                 const erased = this.endpoints.delete(endpoint)
-                assert(erased)
+                if (!erased) throw new Error('assertion failed')
                 if (this.endpoints.size === 0)
                     this.endpoints = undefined
             }
@@ -210,7 +208,7 @@ export default class MultiTrie {
         let ret = nextNode.remove(prefix, start + 1, size - 1, endpoint)
         if (nextNode.isRedundant)
         {
-            assert(this.count > 0)
+            if (this.count <= 0) throw new Error('assertion failed')
 
             if (this.count === 1) {
                 this.next = []

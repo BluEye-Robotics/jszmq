@@ -1,9 +1,10 @@
+import { describe, it, expect } from 'vitest'
 import * as jsmq from '../src'
 
 const decode = (b: Uint8Array) => new TextDecoder().decode(b)
 
-describe('reqrep', function() {
-    it('simple request response', function(done) {
+describe('reqrep', () => {
+    it('simple request response', () => new Promise<void>(resolve => {
         const req = new jsmq.Req()
         const rep = new jsmq.Rep()
 
@@ -19,11 +20,11 @@ describe('reqrep', function() {
             expect(decode(msg)).toEqual('World')
             req.close()
             rep.close()
-            done()
+            resolve()
         })
-    })
+    }))
 
-    it('multiple requests', function (done) {
+    it('multiple requests', () => new Promise<void>(resolve => {
         const rep = new jsmq.Rep()
         const reqs:jsmq.Req[] = []
         const last = new jsmq.Req()
@@ -50,7 +51,7 @@ describe('reqrep', function() {
             last.close()
             rep.close()
 
-            done()
+            resolve()
         })
-    })
+    }))
 })

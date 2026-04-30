@@ -1,6 +1,6 @@
 const utf8Encoder = new TextEncoder()
 
-export function concatBytes(parts: Uint8Array[]): Uint8Array {
+export function concatBytes(parts: Uint8Array[]): Uint8Array<ArrayBuffer> {
     let total = 0
     for (const p of parts)
         total += p.byteLength

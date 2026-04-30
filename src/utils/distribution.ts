@@ -1,4 +1,4 @@
-import {pull} from 'lodash'
+import {remove} from './array'
 import {IEndpoint, Msg} from '../types'
 
 function swap<T>(items: Array<T>, index1: number, index2: number) {
@@ -52,7 +52,7 @@ export default class Distribution {
         if (this.endpoints.indexOf(endpoint) < this.active)
             this.active--
 
-        pull(this.endpoints, endpoint)
+        remove(this.endpoints, endpoint)
     }
 
     activated(endpoint: IEndpoint) {
