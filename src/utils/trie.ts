@@ -1,8 +1,7 @@
 import * as assert from 'assert'
-import {Buffer} from 'buffer'
 import {resize} from './array'
 
-type ForeachCallback = (buffer:Buffer) => void
+type ForeachCallback = (buffer:Uint8Array) => void
 
 export default class Trie {
     referenceCount:number
@@ -23,14 +22,14 @@ export default class Trie {
         return this.referenceCount === 0 && this.liveNodes === 0
     }
 
-    add(prefix:Buffer, start:number, size:number) : boolean {
+    add(prefix:Uint8Array, start:number, size:number) : boolean {
         // We are at the node corresponding to the prefix. We are done.
         if (size === 0) {
             this.referenceCount++
             return this.referenceCount === 1
         }
 
-        const currentCharacter = prefix.readUInt8(start)
+        const currentCharacter = prefix[start]
         if (currentCharacter < this.minCharacter || currentCharacter >= this.minCharacter + this.count) {
             // The character is out of range of currently handled
             // characters. We have to extend the table.
@@ -68,7 +67,7 @@ export default class Trie {
     }
 
 
-    remove(prefix:Buffer, start:number, size:number) : boolean {
+    remove(prefix:Uint8Array, start:number, size:number) : boolean {
         if (size === 0) {
             if (this.referenceCount === 0)
                 return false
@@ -76,7 +75,7 @@ export default class Trie {
             return this.referenceCount === 0
         }
 
-        const currentCharacter = prefix.readUInt8(start)
+        const currentCharacter = prefix[start]
         if (this.count == 0 || currentCharacter < this.minCharacter || currentCharacter >= this.minCharacter + this.count)
             return false
 
@@ -136,7 +135,7 @@ export default class Trie {
         return wasRemoved
     }
 
-    public check(data:Buffer, offset:number, size:number) : boolean {
+    public check(data:Uint8Array, offset:number, size:number) : boolean {
         // This function is on critical path. It deliberately doesn't use
         // recursion to get a bit better performance.
         let current = this
@@ -152,7 +151,7 @@ export default class Trie {
 
             // If there's no corresponding slot for the first character
             // of the prefix, the message does not match.
-            const character = data.readUInt8(start)
+            const character = data[start]
             if (character < current.minCharacter || character >= current.minCharacter + current.count)
                 return false
 
@@ -174,10 +173,10 @@ export default class Trie {
 
     // Apply the function supplied to each subscription in the trie.
     forEach(func: ForeachCallback) {
-        this.forEachHelper(Buffer.alloc(0), 0, 0, func);
+        this.forEachHelper(new Uint8Array(0), 0, 0, func);
     }
 
-    forEachHelper(buffer:Buffer, bufferSize:number, maxBufferSize:number, func:ForeachCallback) {
+    forEachHelper(buffer:Uint8Array, bufferSize:number, maxBufferSize:number, func:ForeachCallback) {
         // If this node is a subscription, apply the function.
         if (this.referenceCount > 0)
             func(buffer.slice(0, bufferSize))
@@ -185,8 +184,8 @@ export default class Trie {
         // Adjust the buffer.
         if (bufferSize >= maxBufferSize) {
             maxBufferSize = bufferSize + 256
-            const newBuffer = Buffer.alloc(maxBufferSize, 0)
-            buffer.copy(newBuffer)
+            const newBuffer = new Uint8Array(maxBufferSize)
+            newBuffer.set(buffer)
             buffer = newBuffer
         }
 
@@ -206,7 +205,7 @@ export default class Trie {
 
         // If there are multiple subnodes.
         for (let c = 0; c != this.count; c++) {
-            buffer.writeUInt8(this.minCharacter + c, bufferSize)
+            buffer[bufferSize] = this.minCharacter + c
             if (this.next[c] != null) {
                 // @ts-ignore
                 this.next[c].forEachHelper(buffer, bufferSize + 1, maxBufferSize, func)

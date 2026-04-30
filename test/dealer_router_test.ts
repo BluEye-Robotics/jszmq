@@ -1,6 +1,8 @@
 import 'jasmine'
 import * as jsmq from '../src'
 
+const decode = (b: Uint8Array) => new TextDecoder().decode(b)
+
 describe('dealer-router', function () {
     it('ping-pong', function (done) {
         const router = new jsmq.Router()
@@ -10,10 +12,10 @@ describe('dealer-router', function () {
 
         dealer.send('hello')
         router.once('message', (routingId, message) => {
-            expect(message.toString()).toBe('hello')
+            expect(decode(message)).toBe('hello')
             router.send([routingId, 'world'])
             dealer.once('message', reply => {
-                expect(reply.toString()).toBe('world')
+                expect(decode(reply)).toBe('world')
                 done()
             })
         })

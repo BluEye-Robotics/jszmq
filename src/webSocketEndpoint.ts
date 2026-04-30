@@ -1,9 +1,9 @@
 import { EventEmitter } from 'events'
 import * as WebSocket from 'isomorphic-ws'
-import {Buffer} from 'buffer'
 import SocketOptions from './socketOptions'
 import {isString} from 'lodash'
 import {IEndpoint, Msg} from './types'
+import {concatBytes, encodeUtf8} from './utils/bytes'
 
 enum State {
     Closed,
@@ -15,12 +15,12 @@ enum State {
 export default class WebSocketEndpoint extends EventEmitter implements IEndpoint {
     socket!: WebSocket;
     state: State
-    frames:Buffer[] = []
-    queue:Buffer[] = []
+    frames:Uint8Array[] = []
+    queue:Uint8Array[] = []
     options:SocketOptions
     routingIdReceived = false
     accepted:boolean
-    public routingKey:Buffer = Buffer.alloc(0)
+    public routingKey:Uint8Array = new Uint8Array(0)
     public routingKeyString = ''
     public address:string
 
@@ -105,11 +105,11 @@ export default class WebSocketEndpoint extends EventEmitter implements IEndpoint
         }
 
         if (message.data instanceof ArrayBuffer) {
-            const buffer = Buffer.from(message.data)
+            const buffer = new Uint8Array(message.data)
 
             if (buffer.length > 0) {
-                const more = buffer.readUInt8(0) === 1
-                const msg = buffer.slice(1)
+                const more = buffer[0] === 1
+                const msg = buffer.subarray(1)
 
                 this.frames.push(msg)
 
@@ -147,16 +147,16 @@ export default class WebSocketEndpoint extends EventEmitter implements IEndpoint
             let frame = msg[i]
 
             if (isString(frame))
-                frame = Buffer.from(frame, 'utf8')
-            else if (frame instanceof ArrayBuffer || frame instanceof Buffer) {
+                frame = encodeUtf8(frame)
+            else if (frame instanceof Uint8Array) {
                 // Nothing to do, use as is
             } else {
                 throw new Error('invalid message type')
             }
 
-            const flagsArray = Buffer.alloc(1)
-            flagsArray.writeUInt8(flags, 0)
-            const buffer = Buffer.concat([flagsArray, frame])
+            const flagsArray = new Uint8Array(1)
+            flagsArray[0] = flags
+            const buffer = concatBytes([flagsArray, frame])
 
             if (this.state === State.Active)
                 this.socket.send(buffer)

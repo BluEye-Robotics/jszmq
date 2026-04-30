@@ -1,4 +1,3 @@
-import {Buffer} from 'buffer'
 import SocketBase from './socketBase'
 import {IEndpoint, Msg} from './types'
 
@@ -29,7 +28,7 @@ export default class Pair extends SocketBase {
             this.endpoint = undefined
     }
 
-    protected xrecv(endpoint: IEndpoint, ...frames: Buffer[]) {
+    protected xrecv(endpoint: IEndpoint, ...frames: Uint8Array[]) {
         if (endpoint === this.endpoint)
             this.emit('message', ...frames)
     }

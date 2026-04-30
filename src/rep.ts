@@ -1,15 +1,14 @@
 import Router from './router'
 import {IEndpoint, Msg} from './types'
-import {Buffer} from "buffer"
 import setAsap from 'setasap'
 
-type PendingMsg = [IEndpoint, Buffer[]]
+type PendingMsg = [IEndpoint, Uint8Array[]]
 
 export default class Rep extends Router {
-    private static bottom = Buffer.alloc(0)
+    private static bottom = new Uint8Array(0)
 
     sendingReply: boolean
-    ids:Buffer[]
+    ids:Uint8Array[]
     pending:PendingMsg[]
 
     constructor() {
@@ -37,7 +36,7 @@ export default class Rep extends Router {
             this.sendingReply = false
     }
 
-    private recvInternal(endpoint: IEndpoint, frames: Buffer[]) {
+    private recvInternal(endpoint: IEndpoint, frames: Uint8Array[]) {
         while(true) {
             const frame = frames.shift()
 
@@ -63,7 +62,7 @@ export default class Rep extends Router {
         }
     }
 
-    protected xxrecv(endpoint: IEndpoint, ...frames: Buffer[]) {
+    protected xxrecv(endpoint: IEndpoint, ...frames: Uint8Array[]) {
         // If we are in middle of sending a reply, we cannot receive next request yet, add to pending
         if (this.sendingReply)
             this.pending.push([endpoint, frames])

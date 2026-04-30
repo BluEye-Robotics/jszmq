@@ -1,10 +1,9 @@
 import * as assert from 'assert'
 import {IEndpoint} from '../types'
-import {Buffer} from 'buffer'
 import {isUndefined} from 'lodash'
 import {copy, resize} from './array'
 
-type RemovedCallback = (endpoint:IEndpoint, buffer:Buffer, bufferSize:number) => void
+type RemovedCallback = (endpoint:IEndpoint, buffer:Uint8Array, bufferSize:number) => void
 type MatchCallback = (endpoint:IEndpoint) => void
 
 export default class MultiTrie {
@@ -25,11 +24,11 @@ export default class MultiTrie {
         return isUndefined(this.endpoints) && this.liveNodes === 0
     }
 
-    add(prefix:Buffer, start:number, size:number, endpoint:IEndpoint) : boolean {
+    add(prefix:Uint8Array, start:number, size:number, endpoint:IEndpoint) : boolean {
         return this.addHelper(prefix, start, size, endpoint)
     }
 
-    private addHelper(prefix:Buffer, start:number, size:number, endpoint:IEndpoint) : boolean {
+    private addHelper(prefix:Uint8Array, start:number, size:number, endpoint:IEndpoint) : boolean {
         // We are at the node corresponding to the prefix. We are done.
         if (size === 0) {
             let result = isUndefined(this.endpoints)
@@ -42,7 +41,7 @@ export default class MultiTrie {
             return result
         }
 
-        const currentCharacter = prefix.readUInt8(start)
+        const currentCharacter = prefix[start]
 
         if (currentCharacter < this.minCharacter || currentCharacter >= this.minCharacter + this.count) {
             // The character is out of range of currently handled
@@ -83,10 +82,10 @@ export default class MultiTrie {
     }
 
     public removeEndpoint(endpoint:IEndpoint, func:RemovedCallback) {
-        return this.removeEndpointHelper(endpoint, Buffer.alloc(0), 0, 0, func)
+        return this.removeEndpointHelper(endpoint, new Uint8Array(0), 0, 0, func)
     }
 
-    private removeEndpointHelper(endpoint:IEndpoint, buffer:Buffer, bufferSize:number, maxBufferSize:number, func:RemovedCallback) : boolean {
+    private removeEndpointHelper(endpoint:IEndpoint, buffer:Uint8Array, bufferSize:number, maxBufferSize:number, func:RemovedCallback) : boolean {
         // Remove the subscription from this node.
         if (this.endpoints && this.endpoints.delete(endpoint) && this.endpoints.size === 0) {
             func(endpoint, buffer, bufferSize)
@@ -96,8 +95,8 @@ export default class MultiTrie {
         // Adjust the buffer.
         if (bufferSize >= maxBufferSize) {
             maxBufferSize = bufferSize + 256
-            const newBuffer = Buffer.alloc(maxBufferSize, 0)
-            buffer.copy(newBuffer)
+            const newBuffer = new Uint8Array(maxBufferSize)
+            newBuffer.set(buffer)
             buffer = newBuffer
         }
 
@@ -107,7 +106,7 @@ export default class MultiTrie {
 
         // If there's one subnode (optimisation).
         if (this.count === 1) {
-            buffer.writeUInt8(this.minCharacter, bufferSize)
+            buffer[bufferSize] = this.minCharacter
             bufferSize++
             // @ts-ignore
             this.next[0].removeEndpointHelper(endpoint, buffer, bufferSize, maxBufferSize, func);
@@ -132,7 +131,7 @@ export default class MultiTrie {
         let newMax = this.minCharacter
 
         for (let currentCharacter = 0; currentCharacter != this.count; currentCharacter++) {
-            buffer.writeUInt8(this.minCharacter + currentCharacter, bufferSize)
+            buffer[bufferSize] = this.minCharacter + currentCharacter
 
             const next = this.next[currentCharacter]
             if (next) {
@@ -189,7 +188,7 @@ export default class MultiTrie {
         return true;
     }
 
-    public remove(prefix:Buffer, start:number, size:number, endpoint:IEndpoint) : boolean {
+    public remove(prefix:Uint8Array, start:number, size:number, endpoint:IEndpoint) : boolean {
         if (size === 0) {
             if (this.endpoints) {
                 const erased = this.endpoints.delete(endpoint)
@@ -200,7 +199,7 @@ export default class MultiTrie {
             return !this.endpoints
         }
 
-        const currentCharacter = prefix.readUInt8(start)
+        const currentCharacter = prefix[start]
         if (this.count == 0 || currentCharacter < this.minCharacter || currentCharacter >= this.minCharacter + this.count)
             return false;
 
@@ -266,7 +265,7 @@ export default class MultiTrie {
         return ret;
     }
 
-    match(data:Buffer, offset:number, size:number, func:MatchCallback)
+    match(data:Uint8Array, offset:number, size:number, func:MatchCallback)
     {
         let current = this
         let index = offset
@@ -284,7 +283,7 @@ export default class MultiTrie {
             if (current.count === 0)
                 break;
 
-            const c = data.readUInt8(index)
+            const c = data[index]
             // If there's one subnode (optimisation).
             if (current.count === 1) {
                 if (c != current.minCharacter)

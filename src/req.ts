@@ -1,9 +1,8 @@
 import Dealer from './dealer'
 import {IEndpoint, Msg} from './types'
-import {Buffer} from "buffer"
 
 export default class Req extends Dealer {
-    private static bottom = Buffer.alloc(0)
+    private static bottom = new Uint8Array(0)
 
     // If true, request was already sent and reply wasn't received yet or
     // was received partially.
@@ -26,7 +25,7 @@ export default class Req extends Dealer {
         this.receivingReply = true
     }
 
-    protected xrecv(endpoint: IEndpoint, bottom:Buffer, ...frames: Buffer[]) {
+    protected xrecv(endpoint: IEndpoint, bottom:Uint8Array, ...frames: Uint8Array[]) {
         // If request wasn't send, we can't process reply, drop.
         if (!this.receivingReply)
             return

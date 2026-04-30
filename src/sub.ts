@@ -1,15 +1,18 @@
-import {Buffer} from 'buffer'
 import {isString} from 'lodash'
 import XSub from './xsub'
 import {Frame, Msg} from './types'
+import {concatBytes, encodeUtf8} from './utils/bytes'
+
+const ONE = new Uint8Array([1])
+const ZERO = new Uint8Array([0])
 
 export default class Sub extends XSub {
     subscribe(topic: Frame) {
         if (isString(topic)) {
-            const frame = Buffer.concat([Buffer.from([1]), Buffer.from(topic)])
+            const frame = concatBytes([ONE, encodeUtf8(topic)])
             super.xsend([frame])
-        } else if (Buffer.isBuffer(topic)) {
-            const frame = Buffer.concat([Buffer.from([1]), topic])
+        } else if (topic instanceof Uint8Array) {
+            const frame = concatBytes([ONE, topic])
             super.xsend([frame])
         } else
             throw new Error('unsupported topic type')
@@ -17,10 +20,10 @@ export default class Sub extends XSub {
 
     unsubscribe(topic: Frame) {
         if (isString(topic)) {
-            const frame = Buffer.concat([Buffer.from([0]), Buffer.from(topic)])
+            const frame = concatBytes([ZERO, encodeUtf8(topic)])
             super.xsend([frame])
-        } else if (Buffer.isBuffer(topic)) {
-            const frame = Buffer.concat([Buffer.from([0]), topic])
+        } else if (topic instanceof Uint8Array) {
+            const frame = concatBytes([ZERO, topic])
             super.xsend([frame])
         } else
             throw new Error('unsupported topic type')
