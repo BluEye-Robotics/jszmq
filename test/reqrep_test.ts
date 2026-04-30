@@ -1,5 +1,7 @@
 import * as jsmq from '../src'
 
+const decode = (b: Uint8Array) => new TextDecoder().decode(b)
+
 describe('reqrep', function() {
     it('simple request response', function(done) {
         const req = new jsmq.Req()
@@ -10,17 +12,17 @@ describe('reqrep', function() {
 
         req.send('Hello')
         rep.once('message', msg => {
-            expect(msg.toString()).toEqual('Hello')
+            expect(decode(msg)).toEqual('Hello')
             rep.send('World')
         })
         req.once('message', msg => {
-            expect(msg.toString()).toEqual('World')
+            expect(decode(msg)).toEqual('World')
             req.close()
             rep.close()
             done()
         })
     })
-    
+
     it('multiple requests', function (done) {
         const rep = new jsmq.Rep()
         const reqs:jsmq.Req[] = []
@@ -37,11 +39,11 @@ describe('reqrep', function() {
         rep.on('message', msg => rep.send(msg))
         for (let i = 0; i < 100; i++) {
             reqs[i].send(i.toString())
-            reqs[i].once('message', reply => expect(reply.toString()).toEqual(i.toString()))
+            reqs[i].once('message', reply => expect(decode(reply)).toEqual(i.toString()))
         }
         last.send('done')
         last.once('message', reply => {
-            expect(reply.toString()).toEqual('done')
+            expect(decode(reply)).toEqual('done')
 
             for (let i = 0; i < 100; i++)
                 reqs[i].close()

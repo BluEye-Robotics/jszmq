@@ -1,8 +1,10 @@
-import {Buffer} from 'buffer'
 import SocketBase from './socketBase'
 import {IEndpoint, Msg} from './types'
 import MultiTrie from './utils/multiTrie'
 import Distribution from './utils/distribution'
+import {concatBytes, encodeUtf8} from './utils/bytes'
+
+const ZERO = new Uint8Array([0])
 
 export default class XPub extends SocketBase {
     subscriptions = new MultiTrie()
@@ -19,8 +21,8 @@ export default class XPub extends SocketBase {
         this.distribution.match(endpoint)
     }
 
-    protected sendUnsubscription(endpoint: IEndpoint, data: Buffer, size: number) {
-        const unsubscription = Buffer.concat([Buffer.from([0]), data.slice(0, size)])
+    protected sendUnsubscription(endpoint: IEndpoint, data: Uint8Array, size: number) {
+        const unsubscription = concatBytes([ZERO, data.subarray(0, size)])
         endpoint.send([unsubscription])
     }
 
@@ -34,23 +36,21 @@ export default class XPub extends SocketBase {
     }
 
     protected xsend(msg: Msg) {
-        let topic: Buffer
+        let topic: Uint8Array
 
-        if (Buffer.isBuffer(msg[0])) {
-            // @ts-ignore
+        if (msg[0] instanceof Uint8Array) {
             topic = msg[0]
         } else {
-            // @ts-ignore
-            topic = Buffer.from(msg[0], 'utf8')
+            topic = encodeUtf8(msg[0] as string)
         }
 
         this.subscriptions.match(topic, 0, topic.length, this.markAsMatching)
         this.distribution.sendToMatching(msg)
     }
 
-    protected xrecv(endpoint: IEndpoint, subscription:Buffer, ...frames: Buffer[]) {
+    protected xrecv(endpoint: IEndpoint, subscription:Uint8Array, ...frames: Uint8Array[]) {
         if (subscription.length > 0) {
-            const type = subscription.readUInt8(0)
+            const type = subscription[0]
             if (type === 0 || type === 1) {
                 let unique
 
@@ -69,7 +69,7 @@ export default class XPub extends SocketBase {
         this.xxrecv(endpoint, subscription, ...frames)
     }
 
-    protected xxrecv(endpoint: IEndpoint, ...frames: Buffer[]) {
+    protected xxrecv(endpoint: IEndpoint, ...frames: Uint8Array[]) {
         this.emit('message', ...frames)
     }
 }

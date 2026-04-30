@@ -1,4 +1,3 @@
-import {Buffer} from 'buffer'
 import SocketBase from './socketBase'
 import LoadBalancer from './utils/loadBalancer'
 import {IEndpoint, Msg} from './types'
@@ -24,7 +23,7 @@ export default class Dealer extends SocketBase {
         this.loadBalancer.terminated(endpoint)
     }
 
-    protected xrecv(endpoint: IEndpoint, ...frames: Buffer[]) {
+    protected xrecv(endpoint: IEndpoint, ...frames: Uint8Array[]) {
         this.emit('message', ...frames)
     }
 

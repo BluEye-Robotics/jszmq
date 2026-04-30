@@ -1,6 +1,6 @@
 {
   "name": "@blueyerobotics/jszmq",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Port of zeromq to Javascript over Web Socket transport",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -34,7 +34,6 @@
     "@types/setasap": "^2.0.0",
     "@types/ws": "^7.2.6",
     "assert": "^2.0.0",
-    "buffer": "^5.6.0",
     "events": "^3.2.0",
     "isomorphic-ws": "^4.0.1",
     "lodash": "^4.17.19",

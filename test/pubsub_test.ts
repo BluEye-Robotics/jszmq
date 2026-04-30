@@ -1,5 +1,7 @@
 import * as jsmq from '../src'
 
+const decode = (b: Uint8Array) => new TextDecoder().decode(b)
+
 describe('pubsub', function() {
     it('subscribe', function(done) {
         const pub = new jsmq.XPub()
@@ -15,7 +17,7 @@ describe('pubsub', function() {
             pub.send('AAA')
 
             sub.once('message', topic => {
-                expect(topic.toString()).toBe('AAA')
+                expect(decode(topic)).toBe('AAA')
                 pub.close()
                 sub.close()
                 done()
@@ -41,7 +43,7 @@ describe('pubsub', function() {
                 pub.send('B')
 
                 sub.once('message', topic2 => {
-                    expect(topic2.toString()).toBe('B')
+                    expect(decode(topic2)).toBe('B')
                     pub.close()
                     sub.close()
                     done()

@@ -151,7 +151,7 @@ class SocketBase extends EventEmitter {
 
     }
 
-    protected xrecv(endpoint: IEndpoint, ...frames: Buffer[]) {
+    protected xrecv(endpoint: IEndpoint, ...frames: Uint8Array[]) {
     }
 
     protected xsend(msg: Msg) {

@@ -1,6 +1,4 @@
-import {Buffer} from 'buffer'
-
-export type Frame = Buffer | string
+export type Frame = Uint8Array | string
 export type Msg = Frame[]
 
 export interface IEndpoint {
@@ -8,7 +6,7 @@ export interface IEndpoint {
 
     close(): void;
     readonly address: string;
-    routingKey: Buffer;
+    routingKey: Uint8Array;
     routingKeyString: string;
     removeListener(event: string | symbol, listener: (...args: any[]) => void): this;
     on(event: string | symbol, listener: (...args: any[]) => void): this;
