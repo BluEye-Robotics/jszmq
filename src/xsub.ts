@@ -1,8 +1,8 @@
-import SocketBase from './socketBase'
-import {IEndpoint, Msg} from './types'
-import Trie from './utils/trie'
-import Distribution from './utils/distribution'
-import {concatBytes} from './utils/bytes'
+import SocketBase from './socketBase.js'
+import {IEndpoint, Msg} from './types.js'
+import Trie from './utils/trie.js'
+import Distribution from './utils/distribution.js'
+import {concatBytes} from './utils/bytes.js'
 
 const ONE = new Uint8Array([1])
 

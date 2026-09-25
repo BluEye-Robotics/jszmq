@@ -1,7 +1,7 @@
-import EventEmitter from './utils/eventEmitter'
-import SocketOptions from './socketOptions'
-import {IEndpoint, Msg} from './types'
-import {concatBytes, encodeUtf8} from './utils/bytes'
+import EventEmitter from './utils/eventEmitter.js'
+import SocketOptions from './socketOptions.js'
+import {IEndpoint, Msg} from './types.js'
+import {concatBytes, encodeUtf8} from './utils/bytes.js'
 
 enum State {
     Closed,

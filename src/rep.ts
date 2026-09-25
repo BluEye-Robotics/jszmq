@@ -1,5 +1,5 @@
-import Router from './router'
-import {IEndpoint, Msg} from './types'
+import Router from './router.js'
+import {IEndpoint, Msg} from './types.js'
 
 type PendingMsg = [IEndpoint, Uint8Array[]]
 

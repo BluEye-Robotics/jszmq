@@ -1,6 +1,6 @@
-import XSub from './xsub'
-import {Frame, Msg} from './types'
-import {concatBytes, encodeUtf8} from './utils/bytes'
+import XSub from './xsub.js'
+import {Frame, Msg} from './types.js'
+import {concatBytes, encodeUtf8} from './utils/bytes.js'
 
 const ONE = new Uint8Array([1])
 const ZERO = new Uint8Array([0])

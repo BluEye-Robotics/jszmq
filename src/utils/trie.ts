@@ -1,4 +1,4 @@
-import {resize} from './array'
+import {resize} from './array.js'
 
 type ForeachCallback = (buffer:Uint8Array) => void
 

@@ -1,11 +1,11 @@
-import EventEmitter from './utils/eventEmitter'
-import SocketOptions from './socketOptions'
-import {remove} from './utils/array'
-import {Frame, IEndpoint, IListener, Msg} from './types'
-import WebSocketListener from './webSocketListener'
+import EventEmitter from './utils/eventEmitter.js'
+import SocketOptions from './socketOptions.js'
+import {remove} from './utils/array.js'
+import {Frame, IEndpoint, IListener, Msg} from './types.js'
+import WebSocketListener from './webSocketListener.js'
 import * as http from 'http'
 import * as https from 'https'
-import WebSocketEndpoint from './webSocketEndpoint'
+import WebSocketEndpoint from './webSocketEndpoint.js'
 
 class SocketBase extends EventEmitter {
     private endpoints: IEndpoint[] = []

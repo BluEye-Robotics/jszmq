@@ -1,8 +1,8 @@
-import SocketBase from './socketBase'
-import {IEndpoint, Msg} from './types'
-import MultiTrie from './utils/multiTrie'
-import Distribution from './utils/distribution'
-import {concatBytes, encodeUtf8} from './utils/bytes'
+import SocketBase from './socketBase.js'
+import {IEndpoint, Msg} from './types.js'
+import MultiTrie from './utils/multiTrie.js'
+import Distribution from './utils/distribution.js'
+import {concatBytes, encodeUtf8} from './utils/bytes.js'
 
 const ZERO = new Uint8Array([0])
 
