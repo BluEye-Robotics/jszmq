@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import * as jsmq from '../src'
+import * as jsmq from '../src/index.js'
 
 const decode = (b: Uint8Array) => new TextDecoder().decode(b)
 

@@ -1,5 +1,5 @@
-import Dealer from './dealer'
-import {IEndpoint, Msg} from './types'
+import Dealer from './dealer.js'
+import {IEndpoint, Msg} from './types.js'
 
 export default class Req extends Dealer {
     private static bottom = new Uint8Array(0)

@@ -1,5 +1,5 @@
-import {IEndpoint} from '../types'
-import {copy, resize} from './array'
+import {IEndpoint} from '../types.js'
+import {copy, resize} from './array.js'
 
 type RemovedCallback = (endpoint:IEndpoint, buffer:Uint8Array, bufferSize:number) => void
 type MatchCallback = (endpoint:IEndpoint) => void

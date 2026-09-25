@@ -1,7 +1,7 @@
-import SocketBase from './socketBase'
-import {remove} from './utils/array'
-import {IEndpoint, Msg} from './types'
-import {bytesToHex, concatBytes} from './utils/bytes'
+import SocketBase from './socketBase.js'
+import {remove} from './utils/array.js'
+import {IEndpoint, Msg} from './types.js'
+import {bytesToHex, concatBytes} from './utils/bytes.js'
 
 const ZERO = new Uint8Array([0])
 

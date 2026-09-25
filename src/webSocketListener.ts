@@ -1,12 +1,12 @@
 import { WebSocketServer, WebSocket as WSWebSocket } from 'ws'
 import {URL} from 'url'
-import EventEmitter from './utils/eventEmitter'
-import SocketOptions from './socketOptions'
-import Endpoint from './webSocketEndpoint'
+import EventEmitter from './utils/eventEmitter.js'
+import SocketOptions from './socketOptions.js'
+import Endpoint from './webSocketEndpoint.js'
 import * as http from 'http'
 import * as https from 'https'
 import * as net from "net"
-import {IListener} from './types'
+import {IListener} from './types.js'
 
 type HttpServer = http.Server | https.Server
 

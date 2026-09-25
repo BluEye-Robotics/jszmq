@@ -1,4 +1,4 @@
-import {Msg, IEndpoint} from '../types'
+import {Msg, IEndpoint} from '../types.js'
 
 export default class LoadBalancer {
     endpoints:IEndpoint[] = []
