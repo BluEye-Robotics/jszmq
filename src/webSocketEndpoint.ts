@@ -3,8 +3,6 @@ import SocketOptions from './socketOptions.js'
 import {IEndpoint, Msg} from './types.js'
 import {concatBytes, encodeUtf8} from './utils/bytes.js'
 
-const OPEN_ATTEMPT_INTERVAL_MS = 10_000
-
 enum State {
     Closed,
     Connecting,
@@ -59,13 +57,22 @@ export default class WebSocketEndpoint extends EventEmitter implements IEndpoint
 
         this.routingIdReceived = false
         this.socket = this.openCandidate()
+
+        const interval = this.options.openAttemptInterval
+        if (!(interval > 0))
+            return
+
         // Starting a second WebSocket to the same address can wake a stalled
         // Safari LAN handshake. The original attempt can still be the one to open.
-        this.secondAttemptTimer = setTimeout(() => this.openCandidate(), OPEN_ATTEMPT_INTERVAL_MS)
-        this.openingDeadline = setTimeout(() => {
-            this.cancelOpening()
-            this.onClose()
-        }, 2 * OPEN_ATTEMPT_INTERVAL_MS)
+        this.secondAttemptTimer = setTimeout(() => {
+            // Armed here, not in connect(), so the second attempt gets a full
+            // interval even when this timer runs late.
+            this.openingDeadline = setTimeout(() => {
+                this.cancelOpening()
+                this.onClose()
+            }, interval)
+            this.openCandidate()
+        }, interval)
     }
 
     private openCandidate(): WebSocket {

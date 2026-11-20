@@ -18,6 +18,7 @@ class BrowserSocket {
     readyState = this.CONNECTING
     onopen: ((event: { target: BrowserSocket }) => void) | null = null
     onclose: ((event: { target: BrowserSocket }) => void) | null = null
+    onerror: ((event: { target: BrowserSocket }) => void) | null = null
     send = vi.fn<(frame: Uint8Array) => void>()
 
     constructor(
@@ -41,6 +42,51 @@ class BrowserSocket {
         this.readyState = this.CLOSED
         this.onclose?.({ target: this })
     }
+
+    // A refused or failed connection: the browser fires error, then close.
+    fail() {
+        this.onerror?.({ target: this })
+        this.finishClose()
+    }
+}
+
+function withRecovery<T extends { options: { openAttemptInterval: number } }>(socket: T): T {
+    socket.options.openAttemptInterval = handshakeTimeout
+    return socket
+}
+
+// blueye-ts drops a connection by closing endpoint.socket directly.
+function endpointSocket(socket: object): BrowserSocket {
+    return (socket as { endpoints: { socket: BrowserSocket }[] }).endpoints[0].socket
+}
+
+// A clock whose overdue timers all run back to back on the next wake-up, as a
+// browser does after sleep or in a throttled background tab.
+function sleepyClock() {
+    let now = 0
+    let nextId = 1
+    const timers = new Map<number, { at: number, run: () => void }>()
+    vi.stubGlobal('setTimeout', (run: () => void, delay = 0) => {
+        timers.set(nextId, { at: now + delay, run })
+        return nextId++
+    })
+    vi.stubGlobal('clearTimeout', (id?: number) => {
+        if (id !== undefined)
+            timers.delete(id)
+    })
+
+    return {
+        wakeAfter(elapsed: number) {
+            now += elapsed
+            for (;;) {
+                const [due] = [...timers].filter(([, timer]) => timer.at <= now).sort((a, b) => a[1].at - b[1].at)
+                if (!due)
+                    return
+                timers.delete(due[0])
+                due[1].run()
+            }
+        },
+    }
 }
 
 describe('WebSocket opening handshakes', () => {
@@ -55,8 +101,53 @@ describe('WebSocket opening handshakes', () => {
         vi.useRealTimers()
     })
 
-    it('only opens a second candidate for the endpoint that is still connecting', () => {
+    it('makes a single attempt with no deadline unless openAttemptInterval is set', () => {
         const sub = new jsmq.Sub()
+        sub.connect(endpointUrl)
+        expect(vi.getTimerCount()).toBe(0)
+        vi.advanceTimersByTime(handshakeTimeout * 6)
+        expect(sockets).toHaveLength(1)
+        expect(sockets[0].readyState).toBe(sockets[0].CONNECTING)
+    })
+
+    it('gives the second attempt a full interval when overdue timers run back to back', () => {
+        const clock = sleepyClock()
+        const sub = withRecovery(new jsmq.Sub())
+        sub.connect(endpointUrl)
+        clock.wakeAfter(handshakeTimeout * 3)
+        expect(sockets).toHaveLength(2)
+        const [first, second] = sockets
+        expect(first.readyState).toBe(first.CONNECTING)
+        expect(second.readyState).toBe(second.CONNECTING)
+        clock.wakeAfter(handshakeTimeout - 1)
+        expect(second.readyState).toBe(second.CONNECTING)
+        clock.wakeAfter(1)
+        expect(first.readyState).toBe(first.CLOSING)
+        expect(second.readyState).toBe(second.CLOSING)
+    })
+
+    it('retries once after a refusal that arrives before the second attempt', () => {
+        const sub = withRecovery(new jsmq.Sub())
+        sub.options.reconnectInterval = retryInterval
+        const lost = vi.fn()
+        sub.on('lost', lost)
+        sub.connect(endpointUrl)
+        vi.advanceTimersByTime(5)
+        sockets[0].fail()
+        expect(lost).toHaveBeenCalledTimes(1)
+        expect(vi.getTimerCount()).toBe(1)
+        vi.advanceTimersByTime(retryInterval)
+        expect(sockets).toHaveLength(2)
+        // The refused round's second attempt must not fire into the new round.
+        vi.advanceTimersByTime(handshakeTimeout - 1)
+        expect(sockets).toHaveLength(2)
+        vi.advanceTimersByTime(1)
+        expect(sockets).toHaveLength(3)
+        expect(lost).toHaveBeenCalledTimes(1)
+    })
+
+    it('only opens a second candidate for the endpoint that is still connecting', () => {
+        const sub = withRecovery(new jsmq.Sub())
         sub.connect('ws://127.0.0.1:5556')
         sub.connect('ws://127.0.0.1:5557')
         const [stalled, healthy] = sockets
@@ -73,7 +164,7 @@ describe('WebSocket opening handshakes', () => {
     })
 
     it.each(['original', 'second'])('sends the identity and queued message once when the %s socket wins', (order) => {
-        const dealer = new jsmq.Dealer()
+        const dealer = withRecovery(new jsmq.Dealer())
         dealer.options.routingId = 'A'
         dealer.options.reconnectInterval = retryInterval
         const ready = vi.fn()
@@ -111,7 +202,7 @@ describe('WebSocket opening handshakes', () => {
     })
 
     it('aborts two hanging handshakes and retries once, even when both close callbacks arrive late', () => {
-        const sub = new jsmq.Sub()
+        const sub = withRecovery(new jsmq.Sub())
         sub.options.reconnectInterval = retryInterval
         const lost = vi.fn()
         sub.on('lost', lost)
@@ -138,7 +229,7 @@ describe('WebSocket opening handshakes', () => {
     })
 
     it.each(['original', 'second'])('keeps the other handshake alive when the %s candidate closes early', (order) => {
-        const sub = new jsmq.Sub()
+        const sub = withRecovery(new jsmq.Sub())
         const ready = vi.fn()
         const lost = vi.fn()
         sub.on('ready', ready).on('lost', lost)
@@ -147,6 +238,7 @@ describe('WebSocket opening handshakes', () => {
         expect(sockets).toHaveLength(2)
         const [failed, pending] = order === 'original' ? sockets : [...sockets].reverse()
         failed.finishClose()
+        expect(endpointSocket(sub)).toBe(pending)
         vi.advanceTimersByTime(retryInterval)
         expect(sockets).toHaveLength(2)
         expect(pending.readyState).toBe(pending.CONNECTING)
@@ -162,7 +254,7 @@ describe('WebSocket opening handshakes', () => {
         [handshakeTimeout, 2],
         [handshakeTimeout * 2, 2],
     ])('does not reconnect after disconnecting at %i ms', (elapsed, expectedAttempts) => {
-        const sub = new jsmq.Sub()
+        const sub = withRecovery(new jsmq.Sub())
         sub.options.reconnectInterval = retryInterval
         sub.connect(endpointUrl)
         vi.advanceTimersByTime(elapsed)
@@ -178,7 +270,7 @@ describe('WebSocket opening handshakes', () => {
     })
 
     it('closes every pending endpoint and cancels their second attempts when the socket closes', () => {
-        const sub = new jsmq.Sub()
+        const sub = withRecovery(new jsmq.Sub())
         sub.connect('ws://127.0.0.1:5556')
         sub.connect('ws://127.0.0.1:5557')
         vi.advanceTimersByTime(handshakeTimeout - 1)
