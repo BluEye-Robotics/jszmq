@@ -103,17 +103,17 @@ class SocketBase extends EventEmitter {
 
         this.binds = []
 
-        this.endpoints.forEach(endpoint => {
+        const endpoints = this.endpoints.splice(0)
+        for (const endpoint of endpoints) {
             endpoint.removeListener('attach', this.endpointAttached)
             endpoint.removeListener('lost', this.endpointLost)
             endpoint.removeListener('terminated', this.endpointTerminatedInternal)
             endpoint.removeListener('message', this.xrecv)
             endpoint.removeListener('hiccuped', this.endpointRecovered)
             endpoint.close()
-            remove(this.endpoints, endpoint)
             this.endpointTerminated(endpoint)
             this.emit('lost', endpoint)
-        })
+        }
     }
 
     subscribe(topic: Frame) {
