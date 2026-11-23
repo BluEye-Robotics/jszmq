@@ -21,6 +21,10 @@ export default class WebSocketEndpoint extends EventEmitter implements IEndpoint
     public routingKey:Uint8Array = new Uint8Array(0)
     public routingKeyString = ''
     public address:string
+    private readonly openingSockets = new Set<WebSocket>()
+    private secondAttemptTimer?: ReturnType<typeof setTimeout>
+    private openingDeadline?: ReturnType<typeof setTimeout>
+    private reconnectTimer?: ReturnType<typeof setTimeout>
 
     constructor(address:string|WebSocket, options:SocketOptions) {
         super()
@@ -52,12 +56,67 @@ export default class WebSocketEndpoint extends EventEmitter implements IEndpoint
             return // The socket was already closed, abort
 
         this.routingIdReceived = false
-        this.socket = new WebSocket(this.address, ['ZWS2.0'])
-        this.socket.binaryType = "arraybuffer"
-        this.socket.onopen = this.onOpen.bind(this)
-        this.socket.onerror = this.error.bind(this)
-        this.socket.onclose = this.onClose.bind(this)
-        this.socket.onmessage = this.onMessage.bind(this)
+        this.socket = this.openCandidate()
+
+        const interval = this.options.openAttemptInterval
+        if (!(interval > 0))
+            return
+
+        // Starting a second WebSocket to the same address can wake a stalled
+        // Safari LAN handshake. The original attempt can still be the one to open.
+        this.secondAttemptTimer = setTimeout(() => {
+            // Armed here, not in connect(), so the second attempt gets a full
+            // interval even when this timer runs late.
+            this.openingDeadline = setTimeout(() => {
+                this.cancelOpening()
+                this.onClose()
+            }, interval)
+            this.openCandidate()
+        }, interval)
+    }
+
+    private openCandidate(): WebSocket {
+        const socket = new WebSocket(this.address, ['ZWS2.0'])
+        this.openingSockets.add(socket)
+        socket.binaryType = "arraybuffer"
+        socket.onopen = () => {
+            if (!this.openingSockets.delete(socket))
+                return
+
+            this.cancelOpening()
+            this.socket = socket
+            socket.onopen = null
+            socket.onerror = this.error.bind(this)
+            socket.onclose = this.onClose.bind(this)
+            socket.onmessage = this.onMessage.bind(this)
+            this.onOpen()
+        }
+        socket.onerror = () => socket.close()
+        socket.onclose = () => {
+            if (!this.openingSockets.delete(socket))
+                return
+
+            const [remaining] = this.openingSockets
+            if (remaining) {
+                this.socket = remaining
+                return
+            }
+            this.cancelOpening()
+            this.onClose()
+        }
+        return socket
+    }
+
+    private cancelOpening() {
+        clearTimeout(this.secondAttemptTimer)
+        clearTimeout(this.openingDeadline)
+        for (const socket of this.openingSockets) {
+            socket.onopen = null
+            socket.onerror = null
+            socket.onclose = null
+            socket.close()
+        }
+        this.openingSockets.clear()
     }
 
     onOpen() {
@@ -80,13 +139,13 @@ export default class WebSocketEndpoint extends EventEmitter implements IEndpoint
             this.emit('terminated', this)
         }
         else if (this.state !== State.Closed) {
+            // A lost listener may disconnect synchronously and cancel this retry.
+            this.reconnectTimer = setTimeout(this.connect, this.options.reconnectInterval)
             if (this.state === State.Active || this.state === State.Connecting)
                 this.emit('lost', this)
 
             if (this.state === State.Active)
                 this.state = State.Reconnecting
-
-            setTimeout(this.connect, this.options.reconnectInterval)
         }
     }
 
@@ -126,8 +185,10 @@ export default class WebSocketEndpoint extends EventEmitter implements IEndpoint
     close() {
         if (this.state !== State.Closed) {
             this.state = State.Closed
-
-            if (this.socket.readyState === this.socket.CONNECTING || this.socket.readyState === this.socket.OPEN)
+            clearTimeout(this.reconnectTimer)
+            if (this.openingSockets.size)
+                this.cancelOpening()
+            else if (this.socket.readyState === this.socket.CONNECTING || this.socket.readyState === this.socket.OPEN)
                 this.socket.close()
 
             this.emit('terminated', this)

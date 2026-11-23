@@ -112,6 +112,20 @@ socket.on('message', (a, b) => console.log(decode(a), decode(b)))               
 socket.on('message', (...frames) => frames.forEach(f => console.log(decode(f))))   // any number
 ```
 
+### Stalled handshakes
+
+Safari can leave a WebSocket to a LAN address in `CONNECTING` without sending anything. Starting a second WebSocket to the same address lets the first one through. `openAttemptInterval` turns that recovery on for a socket's outbound connections; set it before `connect`:
+
+```js
+const sub = new zmq.Sub()
+sub.options.openAttemptInterval = 10_000
+sub.connect('ws://192.168.1.10:3000')
+```
+
+A connection still opening after the interval gets one overlapping attempt. The first to open is used and the other is closed. If neither has opened one more interval later, both are closed and the socket retries after `reconnectInterval`.
+
+It is off by default (`0`) because both attempts can reach the peer, which then sees two connections for a moment; whatever it sends to the discarded one is lost. Enable it only where the connecting side sends first, such as Sub, or Req to a bound Rep. Do not enable it against a bound Push, Dealer, Req or Pair.
+
 ## Examples
 
 ### Push/Pull
