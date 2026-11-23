@@ -89,7 +89,7 @@ class SocketBase extends EventEmitter {
         const listener = this.binds.find(b => b.address === address)
 
         if (listener) {
-            listener.removeListener('attach', this.attachEndpoint)
+            listener.removeListener('attach', this.bindAttachEndpoint)
             listener.close()
             remove(this.binds, listener)
         }
@@ -97,7 +97,7 @@ class SocketBase extends EventEmitter {
 
     close() {
         this.binds.forEach(listener => {
-            listener.removeListener('attach', this.attachEndpoint)
+            listener.removeListener('attach', this.bindAttachEndpoint)
             listener.close()
         })
 

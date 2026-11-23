@@ -11,6 +11,10 @@ export default class LoadBalancer {
     terminated(endpoint:IEndpoint) {
         const index = this.endpoints.indexOf(endpoint)
 
+        // An endpoint that never attached, e.g. one disconnected while connecting.
+        if (index === -1)
+            return
+
         if (this.current === this.endpoints.length - 1) {
             this.current = 0
         }

@@ -19,6 +19,7 @@ class BrowserSocket {
     onopen: ((event: { target: BrowserSocket }) => void) | null = null
     onclose: ((event: { target: BrowserSocket }) => void) | null = null
     onerror: ((event: { target: BrowserSocket }) => void) | null = null
+    onmessage: ((event: { data: ArrayBuffer }) => void) | null = null
     send = vi.fn<(frame: Uint8Array) => void>()
 
     constructor(
@@ -47,6 +48,11 @@ class BrowserSocket {
     fail() {
         this.onerror?.({ target: this })
         this.finishClose()
+    }
+
+    // One ZWS 2.0 frame from the peer: a flags byte, then the body.
+    receive(frame: Uint8Array) {
+        this.onmessage?.({ data: frame.slice().buffer })
     }
 }
 
@@ -298,5 +304,60 @@ describe('WebSocket opening handshakes', () => {
         expect(vi.getTimerCount()).toBe(0)
         vi.advanceTimersByTime(handshakeTimeout * 2 + retryInterval)
         expect(sockets).toHaveLength(1)
+    })
+})
+
+describe('Connected endpoints', () => {
+    beforeEach(() => {
+        vi.useFakeTimers()
+        vi.stubGlobal('WebSocket', BrowserSocket)
+        sockets.length = 0
+    })
+
+    afterEach(() => {
+        vi.unstubAllGlobals()
+        vi.useRealTimers()
+    })
+
+    it('keeps subscribing on an open endpoint after disconnecting one that never opened', () => {
+        const sub = new jsmq.Sub()
+        sub.connect('ws://127.0.0.1:5556')
+        sub.connect('ws://127.0.0.1:5557')
+        const [open, connecting] = sockets
+        open.open()
+        sub.disconnect(connecting.url)
+        sub.subscribe('t')
+        expect(open.send.mock.calls).toEqual([[Uint8Array.of(0)], [Uint8Array.of(0, 1, 0x74)]])
+    })
+
+    it('keeps a Dealer sending on an open endpoint after disconnecting one that never opened', () => {
+        const dealer = new jsmq.Dealer()
+        dealer.connect('ws://127.0.0.1:5556')
+        dealer.connect('ws://127.0.0.1:5557')
+        const [open, connecting] = sockets
+        open.open()
+        dealer.disconnect(connecting.url)
+        dealer.send('x')
+        expect(open.send.mock.calls).toEqual([[Uint8Array.of(0)], [Uint8Array.of(0, 0x78)]])
+    })
+
+    it('drops a multipart message cut off by a reconnect', () => {
+        const dealer = new jsmq.Dealer()
+        dealer.options.reconnectInterval = retryInterval
+        const received = vi.fn()
+        dealer.on('message', received)
+        dealer.connect(endpointUrl)
+        const [first] = sockets
+        first.open()
+        first.receive(Uint8Array.of(0)) // the peer's routing id
+        first.receive(Uint8Array.of(1, 0x41)) // more frames follow
+        first.finishClose()
+        vi.advanceTimersByTime(retryInterval)
+        expect(sockets).toHaveLength(2)
+        const second = sockets[1]
+        second.open()
+        second.receive(Uint8Array.of(0))
+        second.receive(Uint8Array.of(0, 0x42))
+        expect(received.mock.calls).toEqual([[Uint8Array.of(0x42)]])
     })
 })

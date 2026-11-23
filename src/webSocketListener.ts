@@ -67,6 +67,7 @@ function getHttpServerListener(httpServer:HttpServer) {
 export default class WebSocketListener extends EventEmitter implements IListener {
     server:WebSocketServer
     path:string|undefined
+    private readonly endpoints = new Set<Endpoint>()
 
     constructor(public address:string, private httpServer: HttpServer | undefined, private options:SocketOptions) {
         super()
@@ -106,6 +107,8 @@ export default class WebSocketListener extends EventEmitter implements IListener
 
     onConnection(connection:WSWebSocket) {
         const endpoint = new Endpoint(connection as unknown as WebSocket, this.options)
+        this.endpoints.add(endpoint)
+        endpoint.on('terminated', () => this.endpoints.delete(endpoint))
         this.emit('attach', endpoint)
     }
 
@@ -114,5 +117,9 @@ export default class WebSocketListener extends EventEmitter implements IListener
             getHttpServerListener(this.httpServer).remove(this.path)
 
         this.server.close()
+
+        // ws 8 leaves the connections a server accepted open when it closes.
+        for (const endpoint of [...this.endpoints])
+            endpoint.close()
     }
 }
