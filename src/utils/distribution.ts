@@ -45,11 +45,17 @@ export default class Distribution {
     }
 
     terminated(endpoint: IEndpoint) {
+        const index = this.endpoints.indexOf(endpoint)
+
+        // An endpoint that never attached, e.g. one disconnected while connecting.
+        if (index === -1)
+            return
+
         // Remove the endpoint from the list; adjust number of matching, active and/or
         // eligible endpoint accordingly.
-        if (this.endpoints.indexOf(endpoint) < this.matching)
+        if (index < this.matching)
             this.matching--
-        if (this.endpoints.indexOf(endpoint) < this.active)
+        if (index < this.active)
             this.active--
 
         remove(this.endpoints, endpoint)

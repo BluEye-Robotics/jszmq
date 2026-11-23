@@ -300,3 +300,38 @@ describe('WebSocket opening handshakes', () => {
         expect(sockets).toHaveLength(1)
     })
 })
+
+describe('Connected endpoints', () => {
+    beforeEach(() => {
+        vi.useFakeTimers()
+        vi.stubGlobal('WebSocket', BrowserSocket)
+        sockets.length = 0
+    })
+
+    afterEach(() => {
+        vi.unstubAllGlobals()
+        vi.useRealTimers()
+    })
+
+    it('keeps subscribing on an open endpoint after disconnecting one that never opened', () => {
+        const sub = new jsmq.Sub()
+        sub.connect('ws://127.0.0.1:5556')
+        sub.connect('ws://127.0.0.1:5557')
+        const [open, connecting] = sockets
+        open.open()
+        sub.disconnect(connecting.url)
+        sub.subscribe('t')
+        expect(open.send.mock.calls).toEqual([[Uint8Array.of(0)], [Uint8Array.of(0, 1, 0x74)]])
+    })
+
+    it('keeps a Dealer sending on an open endpoint after disconnecting one that never opened', () => {
+        const dealer = new jsmq.Dealer()
+        dealer.connect('ws://127.0.0.1:5556')
+        dealer.connect('ws://127.0.0.1:5557')
+        const [open, connecting] = sockets
+        open.open()
+        dealer.disconnect(connecting.url)
+        dealer.send('x')
+        expect(open.send.mock.calls).toEqual([[Uint8Array.of(0)], [Uint8Array.of(0, 0x78)]])
+    })
+})
