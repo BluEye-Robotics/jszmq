@@ -19,6 +19,7 @@ class BrowserSocket {
     onopen: ((event: { target: BrowserSocket }) => void) | null = null
     onclose: ((event: { target: BrowserSocket }) => void) | null = null
     onerror: ((event: { target: BrowserSocket }) => void) | null = null
+    onmessage: ((event: { data: ArrayBuffer }) => void) | null = null
     send = vi.fn<(frame: Uint8Array) => void>()
 
     constructor(
@@ -47,6 +48,11 @@ class BrowserSocket {
     fail() {
         this.onerror?.({ target: this })
         this.finishClose()
+    }
+
+    // One ZWS 2.0 frame from the peer: a flags byte, then the body.
+    receive(frame: Uint8Array) {
+        this.onmessage?.({ data: frame.slice().buffer })
     }
 }
 
@@ -333,5 +339,25 @@ describe('Connected endpoints', () => {
         dealer.disconnect(connecting.url)
         dealer.send('x')
         expect(open.send.mock.calls).toEqual([[Uint8Array.of(0)], [Uint8Array.of(0, 0x78)]])
+    })
+
+    it('drops a multipart message cut off by a reconnect', () => {
+        const dealer = new jsmq.Dealer()
+        dealer.options.reconnectInterval = retryInterval
+        const received = vi.fn()
+        dealer.on('message', received)
+        dealer.connect(endpointUrl)
+        const [first] = sockets
+        first.open()
+        first.receive(Uint8Array.of(0)) // the peer's routing id
+        first.receive(Uint8Array.of(1, 0x41)) // more frames follow
+        first.finishClose()
+        vi.advanceTimersByTime(retryInterval)
+        expect(sockets).toHaveLength(2)
+        const second = sockets[1]
+        second.open()
+        second.receive(Uint8Array.of(0))
+        second.receive(Uint8Array.of(0, 0x42))
+        expect(received.mock.calls).toEqual([[Uint8Array.of(0x42)]])
     })
 })

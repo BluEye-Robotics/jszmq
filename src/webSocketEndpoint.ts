@@ -56,6 +56,8 @@ export default class WebSocketEndpoint extends EventEmitter implements IEndpoint
             return // The socket was already closed, abort
 
         this.routingIdReceived = false
+        // A multipart message cut off by the drop must not prefix the next one.
+        this.frames = []
         this.socket = this.openCandidate()
 
         const interval = this.options.openAttemptInterval
